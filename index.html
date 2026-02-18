@@ -3,48 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Clock</title>
+    <title>Multi-Timezone Digital Clock</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            margin-top: 50px;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(45deg, #6AB7FF, #EAB8A1);
+            font-family: "Arial", sans-serif;
         }
         .clock {
-            margin: 10px;
+            text-align: center;
+            color: white;
             font-size: 2em;
+        }
+        .timezone {
+            margin: 10px 0;
+            font-size: 0.5em;
         }
     </style>
 </head>
 <body>
-    <div class="clock" id="utcClock"></div>
-    <div class="clock" id="shanghaiClock"></div>
-    <div class="clock" id="newYorkClock"></div>
-    <div class="clock" id="londonClock"></div>
-    <div class="clock" id="tokyoClock"></div>
-
+    <div class="clock">
+        <div id="current-time">Loading...</div>
+        <div class="timezone">UTC</div>
+        <div class="timezone">EST: <span id="est-time"></span></div>
+        <div class="timezone">CST: <span id="cst-time"></span></div>
+        <div class="timezone">PST: <span id="pst-time"></span></div>
+    </div>
     <script>
-        function updateClocks() {
-            const options = { timeZone: '', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-            const timeZones = {
-                "utc": "UTC", 
-                "shanghai": "Asia/Shanghai", 
-                "new-york": "America/New_York", 
-                "london": "Europe/London", 
-                "tokyo": "Asia/Tokyo"
-            };
-            
-            for (const [id, timeZone] of Object.entries(timeZones)) {
-                options.timeZone = timeZone;
-                const timeString = new Intl.DateTimeFormat('en-GB', options).format(new Date());
-                document.getElementById(`${id}Clock`).innerText = `${timeZone}: ${timeString}`;
-            }
+        function updateClock() {
+            const now = new Date();
+            const utcTime = now.toUTCString();
+            const estOffset = -5;
+            const cstOffset = -6;
+            const pstOffset = -8;
+
+            document.getElementById('current-time').innerText = utcTime;
+            document.getElementById('est-time').innerText = calculateTime(estOffset);
+            document.getElementById('cst-time').innerText = calculateTime(cstOffset);
+            document.getElementById('pst-time').innerText = calculateTime(pstOffset);
         }
 
-        setInterval(updateClocks, 1000);
-        updateClocks();
+        function calculateTime(offset) {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const localTime = new Date(utc + (3600000 * offset));
+            return localTime.toISOString().slice(0, 19).replace('T', ' ');
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
     </script>
 </body>
 </html>

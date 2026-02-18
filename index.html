@@ -1,61 +1,775 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Timezone Digital Clock</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: linear-gradient(45deg, #6AB7FF, #EAB8A1);
-            font-family: "Arial", sans-serif;
-        }
-        .clock {
-            text-align: center;
-            color: white;
-            font-size: 2em;
-        }
-        .timezone {
-            margin: 10px 0;
-            font-size: 0.5em;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>跨交易所资金费率套利 · 真实账户版</title>
+  <!-- ECharts CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --muted:#93a4c7;
+      --text:#e8eeff;
+      --good:#27c07d;
+      --warn:#ffb020;
+      --bad:#ff4d4f;
+      --line:#23305a;
+      --btn:#3b82f6;
+      --btn2:#22c55e;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      background: radial-gradient(1000px 600px at 10% 10%, #15204a 0%, var(--bg) 55%);
+      color:var(--text);
+    }
+    a{color:inherit}
+    .container{max-width:1200px;margin:0 auto;padding:22px}
+    .header{
+      display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .title{
+      display:flex;flex-direction:column;gap:6px;
+    }
+    .title h1{margin:0;font-size:18px;font-weight:700}
+    .title .sub{color:var(--muted);font-size:12px}
+    .controls{
+      display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+      padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(18,26,51,.8);
+    }
+    .controls label{font-size:12px;color:var(--muted)}
+    .controls input{
+      width:200px;max-width:60vw;
+      background:#0d1430;border:1px solid var(--line);color:var(--text);
+      padding:10px 12px;border-radius:10px;outline:none;
+    }
+    .controls button{
+      border:0;border-radius:10px;padding:10px 12px;cursor:pointer;font-weight:700;
+      color:white;background:var(--btn);
+    }
+    .controls button.secondary{background:var(--btn2)}
+    .controls .hint{color:var(--muted);font-size:12px;max-width:520px}
+    .grid{
+      display:grid;gap:12px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+    .card{
+      background:rgba(18,26,51,.85);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.25);
+    }
+    .kpi{grid-column: span 4;}
+    .kpi .k{color:var(--muted);font-size:12px}
+    .kpi .v{margin-top:6px;font-size:24px;font-weight:800}
+    .kpi .foot{margin-top:6px;color:var(--muted);font-size:12px;display:flex;gap:10px;flex-wrap:wrap}
+    .chart{grid-column: span 8; min-height:340px;}
+    #navChart{width:100%;height:320px}
+    .alerts{grid-column: span 4;}
+    .alerts h3, .positions h3, .top3 h3{margin:0 0 10px 0;font-size:14px}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 10px;border-radius:999px;border:1px solid var(--line);
+      font-size:12px;color:var(--muted);background:rgba(13,20,48,.7);
+    }
+    .statusDot{width:8px;height:8px;border-radius:50%}
+    .dotGood{background:var(--good)}
+    .dotWarn{background:var(--warn)}
+    .dotBad{background:var(--bad)}
+
+    .alertList{display:flex;flex-direction:column;gap:10px;max-height:310px;overflow:auto;padding-right:4px}
+    .alertItem{
+      border:1px dashed #31427a;
+      border-radius:14px;padding:10px;background:rgba(13,20,48,.75);
+    }
+    .alertItem .row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .badge{
+      font-size:12px;font-weight:800;
+      padding:4px 8px;border-radius:10px;
+      border:1px solid transparent;
+      display:inline-flex;align-items:center;gap:6px;
+    }
+    .bBad{background:rgba(255,77,79,.12);border-color:rgba(255,77,79,.35);color:var(--bad)}
+    .bWarn{background:rgba(255,176,32,.12);border-color:rgba(255,176,32,.35);color:var(--warn)}
+    .bGood{background:rgba(39,192,125,.12);border-color:rgba(39,192,125,.35);color:var(--good)}
+    .small{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.5}
+
+    .positions{grid-column: span 12;}
+    table{
+      width:100%;border-collapse:separate;border-spacing:0;
+      overflow:hidden;border-radius:14px;border:1px solid var(--line);
+    }
+    thead th{
+      text-align:left;font-size:12px;color:#cfe0ff;
+      background:#101a38;padding:10px;border-bottom:1px solid var(--line);
+      position:sticky;top:0;z-index:1;
+    }
+    tbody td{
+      padding:10px;border-bottom:1px solid rgba(35,48,90,.7);
+      font-size:13px;color:var(--text);
+      vertical-align:top;
+    }
+    tbody tr:hover{background:rgba(59,130,246,.06)}
+    .muted{color:var(--muted);font-size:12px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .right{text-align:right}
+    .nowrap{white-space:nowrap}
+    .top3{grid-column: span 12;}
+    .top3Grid{
+      display:grid;grid-template-columns: repeat(3, 1fr);gap:12px;
+    }
+    .topItem{
+      border:1px solid var(--line);border-radius:16px;padding:12px;background:rgba(13,20,48,.75);
+    }
+    .topItem .sym{font-size:16px;font-weight:900}
+    .topItem .kv{display:flex;justify-content:space-between;gap:8px;margin-top:8px;color:var(--muted);font-size:12px}
+    .footerNote{
+      margin-top:14px;color:var(--muted);font-size:12px;line-height:1.6;
+    }
+    .rowBetween{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .rangeBar{
+      display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px
+    }
+    .rangeBar button{
+      background:rgba(13,20,48,.75);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .rangeBar button.active{border-color:rgba(59,130,246,.7)}
+    @media (max-width: 980px){
+      .kpi{grid-column: span 12;}
+      .chart{grid-column: span 12;}
+      .alerts{grid-column: span 12;}
+      .top3Grid{grid-template-columns: 1fr;}
+    }
+  </style>
 </head>
 <body>
-    <div class="clock">
-        <div id="current-time">Loading...</div>
-        <div class="timezone">UTC</div>
-        <div class="timezone">EST: <span id="est-time"></span></div>
-        <div class="timezone">CST: <span id="cst-time"></span></div>
-        <div class="timezone">PST: <span id="pst-time"></span></div>
+  <div class="container">
+    <div class="header">
+      <div class="title">
+        <h1>跨交易所资金费率套利 · 真实账户版</h1>
+        <div class="sub">输入您的API密钥（仅限只读权限），查询真实持仓数据</div>
+      </div>
+
+      <!-- API 密钥输入区域 -->
+      <div class="controls" style="flex-direction:column; align-items:stretch;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:250px;">
+            <label>币安 API Key (只读)</label>
+            <input id="bnApiKey" type="password" placeholder="Binance API Key" />
+          </div>
+          <div style="flex:1; min-width:250px;">
+            <label>币安 Secret Key</label>
+            <input id="bnSecretKey" type="password" placeholder="Binance Secret Key" />
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+          <div style="flex:1; min-width:250px;">
+            <label>OKX API Key (只读)</label>
+            <input id="okxApiKey" type="password" placeholder="OKX API Key" />
+          </div>
+          <div style="flex:1; min-width:250px;">
+            <label>OKX Secret Key</label>
+            <input id="okxSecretKey" type="password" placeholder="OKX Secret Key" />
+          </div>
+          <div style="flex:1; min-width:250px;">
+            <label>OKX Passphrase</label>
+            <input id="okxPassphrase" type="password" placeholder="OKX Passphrase" />
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button id="btnQueryReal" style="flex:1;">查询真实持仓</button>
+          <button class="secondary" id="btnMock" style="flex:1;">使用模拟数据（无需密钥）</button>
+        </div>
+        <div class="hint">
+          ⚠️ 密钥仅从您的浏览器发送到您的后端服务器，不会暴露给第三方。请确保后端部署在您信任的服务器上。
+        </div>
+      </div>
     </div>
-    <script>
-        function updateClock() {
-            const now = new Date();
-            const utcTime = now.toUTCString();
-            const estOffset = -5;
-            const cstOffset = -6;
-            const pstOffset = -8;
 
-            document.getElementById('current-time').innerText = utcTime;
-            document.getElementById('est-time').innerText = calculateTime(estOffset);
-            document.getElementById('cst-time').innerText = calculateTime(cstOffset);
-            document.getElementById('pst-time').innerText = calculateTime(pstOffset);
+    <div class="grid">
+      <!-- KPI 卡片 -->
+      <div class="card kpi">
+        <div class="k">币安合约净值 (钱包余额+未实现盈亏)</div>
+        <div class="v mono" id="kpiBn">--</div>
+        <div class="foot">
+          <span class="pill"><span class="statusDot dotGood" id="dotBn"></span> <span id="bnHealth">数据正常</span></span>
+          <span class="pill">更新时间：<span class="mono" id="bnTime">--</span></span>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="k">OKX 合约净值 (钱包余额+未实现盈亏)</div>
+        <div class="v mono" id="kpiOkx">--</div>
+        <div class="foot">
+          <span class="pill"><span class="statusDot dotGood" id="dotOkx"></span> <span id="okxHealth">数据正常</span></span>
+          <span class="pill">更新时间：<span class="mono" id="okxTime">--</span></span>
+        </div>
+      </div>
+
+      <div class="card kpi">
+        <div class="k">合计总净值</div>
+        <div class="v mono" id="kpiTotal">--</div>
+        <div class="foot">
+          <span class="pill">快照时间：实时计算</span>
+          <span class="pill">当前区间：<span id="rangeLabel">30天</span></span>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="card chart">
+        <div class="rowBetween">
+          <div>
+            <div style="font-weight:800;font-size:14px">净值曲线（最后一天为真实净值，历史为模拟）</div>
+            <div class="muted">基于真实持仓净值 + 历史模拟曲线（展示功能）</div>
+          </div>
+          <div class="rangeBar">
+            <button data-range="7">7天</button>
+            <button data-range="30" class="active">30天</button>
+            <button data-range="90">90天</button>
+            <button data-range="all">全部</button>
+          </div>
+        </div>
+        <div id="navChart"></div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="card alerts">
+        <h3>告警模块（单腿 / 不对称）</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <span class="pill"><span class="statusDot dotBad"></span>单腿：一边有仓位一边无仓位</span>
+          <span class="pill"><span class="statusDot dotWarn"></span>不对称：两边都有但名义差超阈值</span>
+        </div>
+        <div class="small">
+          阈值：最小名义 <span class="mono" id="minNotionalShow">20</span> U；不对称比例 <span class="mono" id="diffRatioShow">5.0</span>%
+        </div>
+        <div class="alertList" id="alertList" style="margin-top:10px"></div>
+      </div>
+
+      <!-- Positions Table -->
+      <div class="card positions">
+        <div class="rowBetween">
+          <h3>当前持仓对照（币安 / OKX / 名义差）基于真实持仓</h3>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span class="pill">只看异常
+              <input id="onlyAbnormal" type="checkbox" style="margin-left:8px;transform:scale(1.1)">
+            </span>
+            <span class="pill">排序
+              <select id="sortBy" style="margin-left:8px;background:#0d1430;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:6px 8px">
+                <option value="totalDesc">按总名义（降序）</option>
+                <option value="diffAbsDesc">按|名义差|（降序）</option>
+                <option value="status">按状态（异常优先）</option>
+                <option value="symbol">按品种（A-Z）</option>
+              </select>
+            </span>
+          </div>
+        </div>
+
+        <div style="overflow:auto;margin-top:10px;max-height:420px">
+          <table>
+            <thead>
+              <tr>
+                <th class="nowrap">品种</th>
+                <th>币安持仓(名义)</th>
+                <th>OKX持仓(名义)</th>
+                <th class="right nowrap">名义差 (U)</th>
+                <th class="nowrap">状态</th>
+              </tr>
+            </thead>
+            <tbody id="posTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Top 3 -->
+      <div class="card top3">
+        <div class="rowBetween">
+          <h3>仓位最重 Top 3 (基于真实持仓)</h3>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span class="pill">口径
+              <select id="topMode" style="margin-left:8px;background:#0d1430;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:6px 8px">
+                <option value="totalNotional">按两边合计绝对名义</option>
+                <option value="netExposure">按净敞口（|差值|）</option>
+              </select>
+            </span>
+          </div>
+        </div>
+
+        <div class="top3Grid" id="top3Grid" style="margin-top:10px"></div>
+
+        <div class="footerNote">
+          <div>🔐 安全提示：API密钥通过您的后端代理转发，不会暴露。请确保后端部署在受控环境并启用HTTPS。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // ========== 配置区 ==========
+      // 请修改为您的后端地址，例如 'https://api.yourdomain.com'，本地开发可留空使用相对路径
+      const BACKEND_URL = ''; 
+
+      const MIN_NOTIONAL_USDT = 20;
+      const DIFF_RATIO = 0.05;
+
+      // ========== DOM 快捷获取 ==========
+      const $ = (id) => document.getElementById(id);
+
+      // ========== 工具函数 ==========
+      function fmtMoney(n) {
+        if (n === null || n === undefined || Number.isNaN(n)) return '--';
+        return Number(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function fmtCST(ts) {
+        if (!ts) return '--';
+        try {
+          return new Date(ts).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+        } catch {
+          return String(ts);
+        }
+      }
+
+      function sideText(side) {
+        if (!side) return '—';
+        return side.toLowerCase() === 'long' ? '多' : (side.toLowerCase() === 'short' ? '空' : side);
+      }
+
+      // 状态判断
+      function statusOf(bnNotional, okxNotional) {
+        const bn = Math.abs(bnNotional || 0);
+        const ok = Math.abs(okxNotional || 0);
+        const diff = bn - ok;
+        const maxv = Math.max(bn, ok, 1e-9);
+
+        if ((bn < MIN_NOTIONAL_USDT && ok >= MIN_NOTIONAL_USDT) || (ok < MIN_NOTIONAL_USDT && bn >= MIN_NOTIONAL_USDT)) {
+          return { level: 'bad', label: '单腿', diff, maxv };
+        }
+        if (bn >= MIN_NOTIONAL_USDT && ok >= MIN_NOTIONAL_USDT) {
+          if (Math.abs(diff) / maxv >= DIFF_RATIO) {
+            return { level: 'warn', label: '不对称', diff, maxv };
+          }
+        }
+        return { level: 'good', label: '正常', diff, maxv };
+      }
+
+      // ========== ECharts 初始化 ==========
+      let chart;
+      function initChart() {
+        chart = echarts.init($('navChart'));
+        window.addEventListener('resize', () => chart && chart.resize());
+      }
+
+      function renderChart(curve, range) {
+        let data = curve.slice();
+        if (range !== 'all') {
+          const n = Number(range);
+          data = data.slice(-n);
+        }
+        const x = data.map(d => d.date);
+        const total = data.map(d => (d.bnNav || 0) + (d.okxNav || 0));
+        const bn = data.map(d => d.bnNav);
+        const okx = data.map(d => d.okxNav);
+
+        const option = {
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'line' },
+            formatter: (params) => {
+              const lines = [`<b>${params[0].axisValue}</b>`];
+              for (const p of params) {
+                lines.push(`${p.marker}${p.seriesName}：<span class="mono">${fmtMoney(p.data)}</span>`);
+              }
+              return lines.join('<br/>');
+            }
+          },
+          legend: { data: ['合计总净值', '币安合约净值', 'OKX合约净值'], textStyle: { color: '#dbe7ff' } },
+          grid: { left: 40, right: 20, top: 50, bottom: 35 },
+          xAxis: {
+            type: 'category',
+            data: x,
+            axisLabel: { color: '#b8c7ef' },
+            axisLine: { lineStyle: { color: '#2a3a70' } }
+          },
+          yAxis: {
+            type: 'value',
+            axisLabel: { color: '#b8c7ef' },
+            splitLine: { lineStyle: { color: 'rgba(42,58,112,.55)' } }
+          },
+          series: [
+            { name: '合计总净值', type: 'line', data: total, smooth: true, showSymbol: false },
+            { name: '币安合约净值', type: 'line', data: bn, smooth: true, showSymbol: false },
+            { name: 'OKX合约净值', type: 'line', data: okx, smooth: true, showSymbol: false },
+          ]
+        };
+        chart.setOption(option, true);
+      }
+
+      // ========== 渲染 KPI ==========
+      function renderKPI(report) {
+        const bn = report?.nav?.binance;
+        const okx = report?.nav?.okx;
+        $('kpiBn').textContent = fmtMoney(bn);
+        $('kpiOkx').textContent = fmtMoney(okx);
+        $('kpiTotal').textContent = fmtMoney((bn || 0) + (okx || 0));
+        $('bnTime').textContent = fmtCST(report?.asOf?.binance);
+        $('okxTime').textContent = fmtCST(report?.asOf?.okx);
+        // 简单健康判断
+        const bnOk = Number.isFinite(bn);
+        const okxOk = Number.isFinite(okx);
+        $('dotBn').className = 'statusDot ' + (bnOk ? 'dotGood' : 'dotBad');
+        $('bnHealth').textContent = bnOk ? '数据正常' : '数据异常';
+        $('dotOkx').className = 'statusDot ' + (okxOk ? 'dotGood' : 'dotBad');
+        $('okxHealth').textContent = okxOk ? '数据正常' : '数据异常';
+        $('minNotionalShow').textContent = MIN_NOTIONAL_USDT;
+        $('diffRatioShow').textContent = (DIFF_RATIO * 100).toFixed(1);
+      }
+
+      // ========== 渲染告警列表 ==========
+      function renderAlerts(positions) {
+        const list = $('alertList');
+        list.innerHTML = '';
+        const alerts = [];
+        for (const p of positions) {
+          const bnNotional = p?.bn?.notional || 0;
+          const okxNotional = p?.okx?.notional || 0;
+          const st = statusOf(bnNotional, okxNotional);
+          if (st.level !== 'good') {
+            alerts.push({
+              symbol: p.symbol,
+              level: st.level,
+              label: st.label,
+              bnNotional,
+              okxNotional,
+              diffAbs: Math.abs(bnNotional - okxNotional)
+            });
+          }
+        }
+        alerts.sort((a, b) => {
+          const wa = a.level === 'bad' ? 2 : 1;
+          const wb = b.level === 'bad' ? 2 : 1;
+          return (wb - wa) || (b.diffAbs - a.diffAbs);
+        });
+        if (alerts.length === 0) {
+          list.innerHTML = '<div class="alertItem"><div class="row"><span class="badge bGood">正常</span><span class="muted">未发现异常</span></div></div>';
+          return;
+        }
+        for (const a of alerts) {
+          const div = document.createElement('div');
+          div.className = 'alertItem';
+          div.innerHTML = `
+            <div class="row">
+              <div><span class="badge ${a.level === 'bad' ? 'bBad' : 'bWarn'}">${a.label}</span> <span class="mono">${a.symbol}</span></div>
+              <div class="muted">|差值|: ${fmtMoney(a.diffAbs)} U</div>
+            </div>
+            <div class="small">币安: ${fmtMoney(a.bnNotional)} U | OKX: ${fmtMoney(a.okxNotional)} U</div>
+          `;
+          list.appendChild(div);
+        }
+      }
+
+      // ========== 渲染持仓表格 ==========
+      function renderPositionsTable(positions) {
+        const onlyAbnormal = $('onlyAbnormal').checked;
+        const sortBy = $('sortBy').value;
+        let rows = positions.map(p => {
+          const bn = p.bn || {};
+          const okx = p.okx || {};
+          const bnNotional = Number(bn.notional || 0);
+          const okxNotional = Number(okx.notional || 0);
+          const st = statusOf(bnNotional, okxNotional);
+          return {
+            symbol: p.symbol,
+            bn,
+            okx,
+            diff: bnNotional - okxNotional,
+            diffAbs: Math.abs(bnNotional - okxNotional),
+            totalAbs: Math.abs(bnNotional) + Math.abs(okxNotional),
+            status: st
+          };
+        });
+        if (onlyAbnormal) rows = rows.filter(r => r.status.level !== 'good');
+        if (sortBy === 'totalDesc') rows.sort((a, b) => b.totalAbs - a.totalAbs);
+        else if (sortBy === 'diffAbsDesc') rows.sort((a, b) => b.diffAbs - a.diffAbs);
+        else if (sortBy === 'status') rows.sort((a, b) => (b.status.level === 'bad' ? 2 : b.status.level === 'warn' ? 1 : 0) - (a.status.level === 'bad' ? 2 : a.status.level === 'warn' ? 1 : 0));
+        else if (sortBy === 'symbol') rows.sort((a, b) => a.symbol.localeCompare(b.symbol));
+        const tbody = $('posTbody');
+        tbody.innerHTML = '';
+        for (const r of rows) {
+          const badgeCls = r.status.level === 'bad' ? 'bBad' : (r.status.level === 'warn' ? 'bWarn' : 'bGood');
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="nowrap"><span class="mono">${r.symbol}</span></td>
+            <td>
+              <div><b>${sideText(r.bn.side)}</b> <span class="mono">${fmtMoney(r.bn.notional || 0)}</span> U</div>
+              <div class="muted">数量: ${r.bn.qty || '--'}</div>
+            </td>
+            <td>
+              <div><b>${sideText(r.okx.side)}</b> <span class="mono">${fmtMoney(r.okx.notional || 0)}</span> U</div>
+              <div class="muted">数量: ${r.okx.qty || '--'}</div>
+            </td>
+            <td class="right nowrap"><span class="mono">${fmtMoney(r.diff)}</span></td>
+            <td><span class="badge ${badgeCls}">${r.status.label}</span></td>
+          `;
+          tbody.appendChild(tr);
+        }
+        if (!rows.length) tbody.innerHTML = '<tr><td colspan="5" class="muted">无数据</td></tr>';
+      }
+
+      // ========== 渲染 Top3 ==========
+      function renderTop3(positions) {
+        const mode = $('topMode').value;
+        const items = positions.map(p => {
+          const bn = Number(p?.bn?.notional || 0);
+          const ok = Number(p?.okx?.notional || 0);
+          return {
+            sym: p.symbol,
+            bn,
+            ok,
+            totalNotional: Math.abs(bn) + Math.abs(ok),
+            netExposure: Math.abs(bn - ok),
+            status: statusOf(bn, ok)
+          };
+        });
+        items.sort((a, b) => mode === 'netExposure' ? b.netExposure - a.netExposure : b.totalNotional - a.totalNotional);
+        const top3 = items.slice(0, 3);
+        const grid = $('top3Grid');
+        grid.innerHTML = '';
+        for (const t of top3) {
+          const badgeCls = t.status.level === 'bad' ? 'bBad' : (t.status.level === 'warn' ? 'bWarn' : 'bGood');
+          grid.innerHTML += `
+            <div class="topItem">
+              <div class="rowBetween"><span class="sym mono">${t.sym}</span><span class="badge ${badgeCls}">${t.status.label}</span></div>
+              <div class="kv"><span>${mode === 'netExposure' ? '净敞口' : '合计名义'}</span><span class="mono">${fmtMoney(mode === 'netExposure' ? t.netExposure : t.totalNotional)} U</span></div>
+              <div class="kv"><span>币安名义</span><span class="mono">${fmtMoney(t.bn)} U</span></div>
+              <div class="kv"><span>OKX名义</span><span class="mono">${fmtMoney(t.ok)} U</span></div>
+            </div>
+          `;
+        }
+      }
+
+      // ========== 主渲染函数 ==========
+      function renderAll(report, range) {
+        renderKPI(report);
+        renderChart(report.curve || [], range);
+        renderAlerts(report.positions || []);
+        renderPositionsTable(report.positions || []);
+        renderTop3(report.positions || []);
+      }
+
+      // ========== 模拟数据生成 ==========
+      function mockReport(clientId) {
+        const days = 120;
+        const today = new Date();
+        let bnBase = 50000 + Math.random() * 5000;
+        let okBase = 50000 + Math.random() * 5000;
+        const curve = [];
+        for (let i = days - 1; i >= 0; i--) {
+          const d = new Date(today.getTime() - i * 86400000);
+          bnBase = Math.max(1000, bnBase + (Math.random() - 0.45) * 220);
+          okBase = Math.max(1000, okBase + (Math.random() - 0.45) * 220);
+          const dateStr = d.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+          curve.push({ date: dateStr, bnNav: bnBase, okxNav: okBase });
+        }
+        const syms = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'OPUSDT', 'ARBUSDT', 'LINKUSDT'];
+        const positions = syms.map(sym => {
+          const base = 500 + Math.random() * 12000;
+          const bnSide = Math.random() > 0.5 ? 'long' : 'short';
+          const okSide = bnSide === 'long' ? 'short' : 'long';
+          let bnNotional = base * (0.8 + Math.random() * 0.6);
+          let okNotional = base * (0.8 + Math.random() * 0.6);
+          if (sym === 'OPUSDT') okNotional = 0;
+          if (sym === 'ARBUSDT') bnNotional = 0;
+          if (sym === 'SOLUSDT') okNotional = bnNotional * 0.85;
+          return {
+            symbol: sym,
+            bn: { side: bnSide, notional: Number(bnNotional.toFixed(2)), qty: (bnNotional / 100).toFixed(4) },
+            okx: { side: okSide, notional: Number(okNotional.toFixed(2)), qty: (okNotional / 100).toFixed(4) }
+          };
+        });
+        return {
+          clientId: clientId || 'mock',
+          asOf: { binance: Date.now(), okx: Date.now() },
+          nav: { binance: curve[curve.length - 1].bnNav, okx: curve[curve.length - 1].okxNav },
+          curve,
+          positions
+        };
+      }
+
+      // ========== 转换真实数据为前端格式 ==========
+      function transformRealData(bnAccount, okxPositions) {
+        // 处理币安持仓
+        const bnPositions = (bnAccount.positions || []).filter(p => parseFloat(p.positionAmt) !== 0);
+        const bnMap = {};
+        bnPositions.forEach(p => {
+          const symbol = p.symbol; // 如 BTCUSDT
+          bnMap[symbol] = {
+            side: parseFloat(p.positionAmt) > 0 ? 'long' : 'short',
+            notional: Math.abs(parseFloat(p.notional) || 0),
+            qty: Math.abs(parseFloat(p.positionAmt))
+          };
+        });
+
+        // 处理OKX持仓
+        const okxList = okxPositions.data || [];
+        const okxMap = {};
+        okxList.forEach(p => {
+          if (parseFloat(p.availPos) === 0) return;
+          // OKX的instId如 BTC-USDT-SWAP，转为 BTCUSDT
+          const symbol = p.instId.replace(/-/g, '').replace('SWAP', '');
+          okxMap[symbol] = {
+            side: p.posSide === 'long' ? 'long' : 'short',
+            notional: Math.abs(parseFloat(p.notionalUsd) || 0),
+            qty: Math.abs(parseFloat(p.availPos))
+          };
+        });
+
+        // 合并所有symbol（取并集）
+        const allSymbols = new Set([...Object.keys(bnMap), ...Object.keys(okxMap)]);
+        const positions = [];
+        allSymbols.forEach(symbol => {
+          positions.push({
+            symbol,
+            bn: bnMap[symbol] || { side: '—', notional: 0, qty: 0 },
+            okx: okxMap[symbol] || { side: '—', notional: 0, qty: 0 }
+          });
+        });
+
+        // 计算净值（钱包余额 + 未实现盈亏）
+        const bnNav = (bnAccount.totalWalletBalance || 0) + (bnAccount.totalUnrealizedProfit || 0);
+        // OKX 净值估算：若无法获取账户总权益，暂用持仓名义和代替（实际应调用/account/balance）
+        let okxNav = 0;
+        if (okxPositions.data && okxPositions.data[0]) {
+          // 简单求和名义作为演示（实际中应使用账户权益字段）
+          okxNav = Object.values(okxMap).reduce((sum, p) => sum + p.notional, 0);
         }
 
-        function calculateTime(offset) {
-            const now = new Date();
-            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-            const localTime = new Date(utc + (3600000 * offset));
-            return localTime.toISOString().slice(0, 19).replace('T', ' ');
+        // 生成模拟历史曲线，最后一天用真实净值覆盖
+        const curve = mockReport('').curve;
+        if (curve.length > 0) {
+          curve[curve.length - 1].bnNav = bnNav;
+          curve[curve.length - 1].okxNav = okxNav;
         }
 
-        setInterval(updateClock, 1000);
-        updateClock();
-    </script>
+        return {
+          nav: { binance: bnNav, okx: okxNav },
+          positions,
+          curve,
+          asOf: { binance: Date.now(), okx: Date.now() }
+        };
+      }
+
+      // ========== 从后端获取真实数据 ==========
+      async function fetchRealData() {
+        const bnApiKey = $('bnApiKey').value.trim();
+        const bnSecretKey = $('bnSecretKey').value.trim();
+        const okxApiKey = $('okxApiKey').value.trim();
+        const okxSecretKey = $('okxSecretKey').value.trim();
+        const okxPassphrase = $('okxPassphrase').value.trim();
+
+        if (!bnApiKey || !bnSecretKey || !okxApiKey || !okxSecretKey || !okxPassphrase) {
+          alert('请填写所有API密钥字段');
+          return;
+        }
+
+        const backend = BACKEND_URL || ''; // 如果未设置，使用相对路径（同域）
+        try {
+          const [bnRes, okxRes] = await Promise.all([
+            fetch(backend + '/api/binance/account', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ apiKey: bnApiKey, secretKey: bnSecretKey })
+            }),
+            fetch(backend + '/api/okx/positions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ apiKey: okxApiKey, secretKey: okxSecretKey, passphrase: okxPassphrase })
+            })
+          ]);
+
+          if (!bnRes.ok) {
+            const err = await bnRes.json();
+            throw new Error('币安API错误: ' + (err.error || bnRes.status));
+          }
+          if (!okxRes.ok) {
+            const err = await okxRes.json();
+            throw new Error('OKX API错误: ' + (err.error || okxRes.status));
+          }
+
+          const bnData = await bnRes.json();
+          const okxData = await okxRes.json();
+          const report = transformRealData(bnData, okxData);
+          return report;
+        } catch (err) {
+          console.error(err);
+          throw err;
+        }
+      }
+
+      // ========== 事件绑定与初始化 ==========
+      let currentRange = '30';
+      function bindEvents() {
+        document.querySelectorAll('.rangeBar button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.rangeBar button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentRange = btn.dataset.range;
+            $('rangeLabel').textContent = currentRange === 'all' ? '全部' : currentRange + '天';
+            if (window.__lastReport) renderAll(window.__lastReport, currentRange);
+          });
+        });
+
+        $('onlyAbnormal').addEventListener('change', () => {
+          if (window.__lastReport) renderPositionsTable(window.__lastReport.positions);
+        });
+        $('sortBy').addEventListener('change', () => {
+          if (window.__lastReport) renderPositionsTable(window.__lastReport.positions);
+        });
+        $('topMode').addEventListener('change', () => {
+          if (window.__lastReport) renderTop3(window.__lastReport.positions);
+        });
+
+        $('btnQueryReal').addEventListener('click', async () => {
+          $('btnQueryReal').textContent = '查询中...';
+          $('btnQueryReal').disabled = true;
+          try {
+            const report = await fetchRealData();
+            window.__lastReport = report;
+            renderAll(report, currentRange);
+          } catch (err) {
+            alert('查询失败: ' + err.message);
+          } finally {
+            $('btnQueryReal').textContent = '查询真实持仓';
+            $('btnQueryReal').disabled = false;
+          }
+        });
+
+        $('btnMock').addEventListener('click', () => {
+          const report = mockReport('demo');
+          window.__lastReport = report;
+          renderAll(report, currentRange);
+        });
+      }
+
+      // 启动
+      initChart();
+      bindEvents();
+      // 首次加载模拟数据
+      const initialMock = mockReport('demo');
+      window.__lastReport = initialMock;
+      renderAll(initialMock, currentRange);
+    })();
+  </script>
 </body>
 </html>

@@ -1,10 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Site</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Clock</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+        .clock {
+            margin: 10px;
+            font-size: 2em;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Site</h1>
-    <p>Current Date and Time: 2026-02-18 08:41:59 UTC</p>
+    <div class="clock" id="utcClock"></div>
+    <div class="clock" id="shanghaiClock"></div>
+    <div class="clock" id="newYorkClock"></div>
+    <div class="clock" id="londonClock"></div>
+    <div class="clock" id="tokyoClock"></div>
+
+    <script>
+        function updateClocks() {
+            const options = { timeZone: '', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const timeZones = {
+                "utc": "UTC", 
+                "shanghai": "Asia/Shanghai", 
+                "new-york": "America/New_York", 
+                "london": "Europe/London", 
+                "tokyo": "Asia/Tokyo"
+            };
+            
+            for (const [id, timeZone] of Object.entries(timeZones)) {
+                options.timeZone = timeZone;
+                const timeString = new Intl.DateTimeFormat('en-GB', options).format(new Date());
+                document.getElementById(`${id}Clock`).innerText = `${timeZone}: ${timeString}`;
+            }
+        }
+
+        setInterval(updateClocks, 1000);
+        updateClocks();
+    </script>
 </body>
 </html>
